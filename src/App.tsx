@@ -30,7 +30,7 @@ function App() {
         <label><input type="radio" value="Q" radioGroup="ecc" checked={ecc === "Q"} onChange={onEccChange} />Quartile (25%)</label>
         <label><input type="radio" value="H" radioGroup="ecc" checked={ecc === "H"} onChange={onEccChange} />High (30%)</label>
       </p>
-      <div style={{ height: "auto", margin: "0 auto", maxWidth: 512, width: "100%" }}>
+      <div style={{ height: "auto", margin: "0 auto", maxWidth: 512, width: "100%", backgroundColor: "white", padding: "16px" }}>
         <QRCode
           size={512}
           style={{ height: "auto", maxWidth: "100%", width: "100%" }}
