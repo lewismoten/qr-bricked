@@ -9,6 +9,6 @@
   "author": "Lewis Moten",
   "license": "ISC",
   "dependencies": {
-    "vite": "^2.9.12"
+    "vite": "^6.3.5"
   }
 }
