@@ -2,7 +2,7 @@ import { useState, type ChangeEventHandler } from 'react'
 import './App.css'
 
 function App() {
-  const [inputText, setInputText] = useState("");
+  const [inputText, setInputText] = useState("https://frontroyallug.wordpress.com");
 
   const onChange: ChangeEventHandler<HTMLInputElement> = (event) => {
     setInputText(event.currentTarget.value);
