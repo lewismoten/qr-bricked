@@ -5,15 +5,37 @@
   text-align: center;
 }
 
+.parts {
+  display: flex;
+  flex-wrap: wrap;
+  flex-direction: row;
+}
+
+.part-cell {
+  width: 150px;
+  height: 100px;
+}
+
+.part-name {
+  color: silver;
+}
+
+.part-count {
+  color: white;
+  font-weight: bolder;
+}
+
 .logo {
   height: 6em;
   padding: 1.5em;
   will-change: filter;
   transition: filter 300ms;
 }
+
 .logo:hover {
   filter: drop-shadow(0 0 2em #646cffaa);
 }
+
 .logo.react:hover {
   filter: drop-shadow(0 0 2em #61dafbaa);
 }
@@ -22,6 +44,7 @@
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
