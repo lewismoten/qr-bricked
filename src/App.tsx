@@ -68,6 +68,21 @@ function App() {
 
     let parts: PartsList = {};
     let partCount = 0;
+    let ctx: CanvasRenderingContext2D | null = null;
+    let cellWidth = 1;
+    let cellHeight = 1;
+
+    if (partRef.current) {
+      ctx = partRef.current.getContext('2d');
+      if (ctx) {
+        const { width, height } = partRef.current;
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, width, height);
+        cellWidth = width / paddedSize;
+        cellHeight = height / paddedSize;
+      }
+    }
+
     for (let i = 0; i < PARTS.length; i++) {
       const [width, height] = PARTS[i];
       const dimensions = width < height ? `${width}x${height}` : `${height}x${width}`;
@@ -98,24 +113,19 @@ function App() {
               partsArea[w][h] = i;
             }
           }
-          if (partRef.current) {
-            const c = partRef.current?.getContext('2d');
-            const scale = 16;
-            if (c) {
-              const cellWidth = partRef.current.width / paddedSize;
-              const cellHeight = partRef.current.height / paddedSize;
-              if (cell === -1) {
-                c.strokeStyle = 'silver';
-                c.lineWidth = 1;
-                c.strokeRect(x * cellWidth, y * cellHeight, (width * cellWidth) - 1, (height * cellHeight) - 1);
-              } else {
-                c.fillStyle = 'black';
-                c.fillRect((x * cellWidth) + 1, (y * cellHeight) + 1, (width * cellWidth) - 2, (height * cellHeight) - 2);
+          if (ctx) {
+            if (cell === -1) {
+              ctx.strokeStyle = 'silver';
+              ctx.lineWidth = 1;
+              ctx.strokeRect(x * cellWidth, y * cellHeight, (width * cellWidth) - 1, (height * cellHeight) - 1);
+            } else {
+              ctx.fillStyle = 'black';
+              ctx.fillRect((x * cellWidth) + 1, (y * cellHeight) + 1, (width * cellWidth) - 2, (height * cellHeight) - 2);
 
-              }
             }
           }
         }
+
       }
     }
 
