@@ -3,35 +3,55 @@ import './App.css'
 import { correction, generate, mode, type Correction, type Mask } from 'lean-qr';
 
 type PartsList = { [key: string]: number };
+type ANGLES = 0 | 90 | 180 | 270;
+type Studs = boolean[][];
+type Part = {
+  name: string,
+  angles: ANGLES[],
+  studs: Studs
+}
 
-const PARTS = [
-  // height, width, tile, plate, brick
-  [4, 4],//, '1751'],
-  [2, 6],//, '69729'],
-  [6, 2],
-  [2, 4],//, '87079'],
-  [4, 2],
-  [2, 3],//, '26603'],
-  [3, 2],
-  [2, 2],//, '3068'],
-  [1, 8],//, '4162'],
-  [8, 1],
-  [1, 6],//, '6636'],
-  [6, 1],
-  [1, 4],//, '2431'],
-  [4, 1],
-  [1, 3],//, '63864'],
-  [3, 1],
-  // corner 2x2,
-  [1, 2],//, '3069'],
-  [2, 1],
-  [1, 1],//, '3070']
+const standardPart = (width: number, height: number): Part => ({
+  name: `${width}x${height}`,
+  angles: width === height ? [0] : [0, 90],
+  studs: Array.from({ length: width }, () => Array.from({ length: height }, () => true))
+});
+
+const PARTS: Part[] = [
+  // 36
+  standardPart(6, 6),//, '6881'],
+  // 16
+  standardPart(4, 4),//, '1751'],
+  // 12
+  standardPart(2, 6),//, '69729'],
+  // 8
+  standardPart(1, 8),//, '4162'],
+  standardPart(2, 4),//, '87079'],
+  // 6
+  standardPart(1, 6),//, '6636'],
+  standardPart(2, 3),//, '26603'],
+  // 4
+  standardPart(1, 4),//, '2431'],
+  standardPart(2, 2),//, '3068'],
+  // 3
+  standardPart(1, 3),//, '63864'],
+  {
+    name: '2x2 Corner',
+    angles: [0, 90, 180, 270],
+    studs: [
+      [true, false],
+      [true, true]
+    ]
+  },
+  // 2
+  standardPart(1, 2),//, '3069'],
+  // 1
+  standardPart(1, 1),//, '3070']
 ]
 function App() {
   const [text, setText] = useState("https://frontroyallug.wordpress.com");
   const [ecc, setEcc] = useState<Correction>(correction.L);
   const [mask, setMask] = useState<Mask | null>(null);
-  const ref = useRef<HTMLCanvasElement>(null);
   const partRef = useRef<HTMLCanvasElement>(null);
   const [size, setSize] = useState(0);
   const [totalOn, setTotalOn] = useState(0);
@@ -76,56 +96,64 @@ function App() {
       ctx = partRef.current.getContext('2d');
       if (ctx) {
         const { width, height } = partRef.current;
+        ctx.reset();
         ctx.fillStyle = 'white';
         ctx.fillRect(0, 0, width, height);
+        ctx.lineWidth = 2;
         cellWidth = width / paddedSize;
         cellHeight = height / paddedSize;
       }
     }
-
+    //v1 Part Count: 378
+    //v2 Part Count: 334
     for (let i = 0; i < PARTS.length; i++) {
-      const [width, height] = PARTS[i];
-      const dimensions = width < height ? `${width}x${height}` : `${height}x${width}`;
-      for (let x = 0; x < paddedSize - (width - 1); x++) {
-        for (let y = 0; y < paddedSize - (height - 1); y++) {
-          const cell = partsArea[x][y];
-          if (cell >= 0) continue;
-          let valid = true;
-          for (let w = x; w < (width + x); w++) {
-            for (let h = y; h < (height + y); h++) {
-              if (partsArea[w][h] !== cell) {
-                valid = false;
-                break;
+      const part = PARTS[i];
+      const { name } = part;
+      for (let x = 0; x < paddedSize; x++) {
+        for (let y = 0; y < paddedSize; y++) {
+          // const cell = partsArea[x][y];
+          // if (cell >= 0) continue;
+          let fit = canFit(x, y, part, partsArea);
+          if (fit === false) continue;
+
+          const studs = rotateStuds(part.studs, fit);
+          let cell;
+          for (let w = 0; w < studs.length; w++) {
+            for (let h = 0; h < studs[0].length; h++) {
+              if (studs[w][h]) {
+                if (cell === undefined) {
+                  cell = partsArea[x + w][y + h];
+                }
+                partsArea[x + w][y + h] = i;
               }
             }
-            if (!valid) break;
           }
-          if (!valid) continue;
+
           partCount++;
-          let fullName = `${cell === -1 ? 'White' : 'Black'} ${dimensions}`;
+          let fullName = `${cell === -1 ? 'White' : 'Black'} ${name}`;
           if (fullName in parts) {
             parts[fullName]++;
           } else {
             parts[fullName] = 1;
           }
-          for (let w = x; w < (width + x); w++) {
-            for (let h = y; h < (height + y); h++) {
-              partsArea[w][h] = i;
-            }
-          }
+
           if (ctx) {
             if (cell === -1) {
-              ctx.strokeStyle = 'silver';
-              ctx.lineWidth = 1;
-              ctx.strokeRect(x * cellWidth, y * cellHeight, (width * cellWidth) - 1, (height * cellHeight) - 1);
+              ctx.fillStyle = 'white';
+              ctx.strokeStyle = 'gray';
             } else {
               ctx.fillStyle = 'black';
-              ctx.fillRect((x * cellWidth) + 1, (y * cellHeight) + 1, (width * cellWidth) - 2, (height * cellHeight) - 2);
-
+              ctx.strokeStyle = 'gray';
+            }
+            for (let w = 0; w < studs.length; w++) {
+              for (let h = 0; h < studs[0].length; h++) {
+                if (studs[w][h]) {
+                  drawCell(ctx, x, y, w, h, studs, cellWidth, cellHeight);
+                }
+              }
             }
           }
         }
-
       }
     }
 
@@ -133,16 +161,64 @@ function App() {
     setPartsList(parts);
     setPartCount(partCount);
 
-    if (ref.current !== null) {
-      qr.toCanvas(ref.current, {
-        on: [0x00, 0x00, 0x00, 0xFF], // black
-        off: [0x00, 0x00, 0x00, 0x00], // transparent
-        padX: includePadding ? 1 : 0,
-        padY: includePadding ? 1 : 0
-      });
-    }
+  }, [text, ecc, mask, partRef.current, includePadding]);
 
-  }, [text, ecc, mask, ref.current, includePadding])
+  const rotateStuds = (studs: boolean[][], angle: 0 | 90 | 180 | 270): boolean[][] => {
+    switch (angle) {
+      case 0:
+        return studs;
+      case 90:
+        return rot90(studs);
+      case 180:
+        return rot90(rot90(studs));
+      case 270:
+        return rot90(rot90(rot90(studs)));
+    }
+  }
+  const rot90 = (studs: boolean[][]): boolean[][] => {
+    const rows = studs.length;
+    const cols = studs[0].length;
+    const rot: boolean[][] = Array.from({ length: cols }, () => Array(rows));
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        rot[c][rows - 1 - r] = studs[r][c];
+      }
+    }
+    return rot;
+  }
+
+  const canFit = (x: number, y: number, part: Part, partsArea: number[][]): false | ANGLES => {
+    let size = partsArea.length;
+    for (let a = 0; a < part.angles.length; a++) {
+      const angle = part.angles[a];
+      const studs = rotateStuds(part.studs, angle);
+      const width = studs.length;
+      const height = studs[0].length;
+      if (x + width > size || y + height > size) continue;
+      let fits = true;
+      let color: number | undefined = undefined;
+      for (let sw = 0; sw < studs.length; sw++) {
+        for (let sh = 0; sh < studs[0].length; sh++) {
+          if (!studs[sw][sh]) continue;
+          if (partsArea.length <= x + sw || partsArea[x + sw].length <= y + sh) {
+            fits = false;
+            break;
+          };
+          const area = partsArea[x + sw][y + sh];
+          if (color === undefined) {
+            color = area;
+            if (color >= 0) fits = false;
+          } else if (area !== color) {
+            fits = false;
+          }
+          if (!fits) break;
+        }
+        if (!fits) break;
+      }
+      if (fits) return angle;
+    }
+    return false;
+  }
 
   const onChangeText: ChangeEventHandler<HTMLInputElement> = (event) => {
     setText(event.currentTarget.value);
@@ -216,9 +292,9 @@ function App() {
         Part Count: {partCount}
       </p>
       <div className="parts">{showParts()}</div>
-      <div style={{ height: "auto", margin: "0 auto", maxWidth: 512, width: "100%", padding: "16px" }}>
+      {/* <div style={{ height: "auto", margin: "0 auto", maxWidth: 512, width: "100%", padding: "16px" }}>
         <canvas ref={ref} width={512} height={512} style={{ height: 'auto', maxWidth: '100%', width: '100%', imageRendering: 'pixelated', backgroundColor: 'white' }} />
-      </div>
+      </div> */}
       <div style={{ height: "auto", margin: "0 auto", maxWidth: 512, width: "100%", padding: "16px" }}>
         <canvas ref={partRef} width={512} height={512} style={{ height: 'auto', maxWidth: '100%', width: '100%', imageRendering: 'pixelated', backgroundColor: 'white' }} />
       </div>
@@ -227,3 +303,43 @@ function App() {
 }
 
 export default App
+
+function drawCell(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, studs: boolean[][], cellWidth: number, cellHeight: number) {
+  ctx.fillRect((x + w) * cellWidth, (y + h) * cellHeight, cellWidth, cellHeight);
+  // top line
+  if (h === 0 || studs[w][h - 1] === false) {
+    ctx.moveTo((x + w) * cellWidth, (y + h) * cellHeight);
+    ctx.lineTo((x + w + 1) * cellWidth, (y + h) * cellHeight);
+    ctx.stroke();
+  }
+  // left line
+  if (w === 0 || studs[w - 1][h] === false) {
+    ctx.moveTo((x + w) * cellWidth, (y + h) * cellHeight);
+    ctx.lineTo((x + w) * cellWidth, (y + h + 1) * cellHeight);
+    ctx.stroke();
+  }
+  // bottom line
+  if (h === studs[0].length - 1 || studs[w][h + 1] === false) {
+    ctx.moveTo((x + w) * cellWidth, (y + h + 1) * cellHeight);
+    ctx.lineTo((x + w + 1) * cellWidth, (y + h + 1) * cellHeight);
+    ctx.stroke();
+  }
+  // right line
+  if (w === studs.length - 1 || studs[w + 1][h] === false) {
+    ctx.moveTo((x + w + 1) * cellWidth, (y + h) * cellHeight);
+    ctx.lineTo((x + w + 1) * cellWidth, (y + h + 1) * cellHeight);
+    ctx.stroke();
+  }
+  //   let contour = getContour(studs);
+  // ctx.beginPath();
+  // ctx.moveTo((x + contour[0].x) * cellWidth, (y + contour[0].y) * cellHeight);
+  // for (let i = 1; i < contour.length; i++) {
+  //   ctx.lineTo((x + contour[i].x) * cellWidth, (y + contour[i].y) * cellHeight);
+  // }
+  // ctx.lineTo((x + contour[0].x) * cellWidth, (y + contour[0].y) * cellHeight);
+  // ctx.closePath();
+  // ctx.fill();
+  // ctx.stroke();
+
+}
+
