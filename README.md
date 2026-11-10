@@ -1,3 +1,5 @@
+![qr-bricked: a QR code laid out in building-block bricks](.github/images/social-preview.png)
+
 # qr-bricked
 
 Create a QR code out of building blocks.
